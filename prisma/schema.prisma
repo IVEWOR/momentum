@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String       @unique
+  image         String?
+  createdAt     DateTime     @default(now())
+  
+  tasks         Task[]
+  dailyStats    DailyStats[]
+  
+  // NextAuth required fields for adapters
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  userId        String
+  description   String
+  status        Boolean   @default(false)
+  priority      Priority  @default(MEDIUM)
+  category      String    @default("General")
+  
+  estimatedTime Int       
+  startTime     DateTime?
+  endTime       DateTime?
+  actualTime    Int?      
+  
+  notes         String?   @db.Text // Ensure this can hold long text
+  
+  // NEW FIELD: Explicit date this task belongs to
+  workDate      DateTime  @default(now())
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Update index to query by userId AND workDate
+  @@index([userId, workDate])
+}
+
+model DailyStats {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @default(now()) // Normalized to midnight
+  
+  totalTasks      Int
+  completedTasks  Int
+  totalEstimated  Int
+  totalActual     Int
+  efficiencyScore Float    // 0-100
+  
+  aiSummary       String?  @db.Text
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date]) // One summary per user per day
+  @@index([userId])
+}
+
+// ... Include standard NextAuth Account/Session models here
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
