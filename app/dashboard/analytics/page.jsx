@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import HistoryCharts from "@/components/analytics/HistoryCharts"; // We will create this
+import HistoryCharts from "@/components/analytics/HistoryCharts";
 
 export default async function AnalyticsPage() {
   const supabase = await createClient();

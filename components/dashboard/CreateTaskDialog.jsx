@@ -21,13 +21,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { SubmitButton } from "@/components/ui/submit-button"; // Import
 
-export default function CreateTaskDialog() {
+export default function CreateTaskDialog({ projects, dailyLogId }) {
   const [open, setOpen] = useState(false);
 
+  // We wrap the action to close the dialog only after success
   async function clientAction(formData) {
     await createTask(formData);
-    setOpen(false); // Close modal on success
+    setOpen(false);
   }
 
   return (
@@ -39,17 +41,36 @@ export default function CreateTaskDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] bg-zinc-950 border-zinc-800 text-zinc-100">
         <DialogHeader>
-          <DialogTitle>New Task</DialogTitle>
+          <DialogTitle>Log New Task</DialogTitle>
         </DialogHeader>
         <form action={clientAction} className="grid gap-4 py-4">
+          <input type="hidden" name="dailyLogId" value={dailyLogId} />
+
+          <div className="grid gap-2">
+            <Label className="text-zinc-400">Project</Label>
+            <Select name="projectId" defaultValue="none">
+              <SelectTrigger className="bg-zinc-900 border-zinc-800">
+                <SelectValue placeholder="Select Project" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+                <SelectItem value="none">No Project (General)</SelectItem>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name} ({p.clientName})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid gap-2">
             <Label htmlFor="description" className="text-zinc-400">
-              Description
+              Task
             </Label>
             <Input
               id="description"
               name="description"
-              placeholder="e.g. Implement Auth"
+              placeholder="e.g. Fix Navigation Bug"
               className="bg-zinc-900 border-zinc-800"
               required
             />
@@ -57,22 +78,8 @@ export default function CreateTaskDialog() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="category" className="text-zinc-400">
-                Category
-              </Label>
+              <Label className="text-zinc-400">Est. Time (min)</Label>
               <Input
-                id="category"
-                name="category"
-                placeholder="Dev"
-                className="bg-zinc-900 border-zinc-800"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="estimatedTime" className="text-zinc-400">
-                Est. Time (min)
-              </Label>
-              <Input
-                id="estimatedTime"
                 name="estimatedTime"
                 type="number"
                 defaultValue="30"
@@ -80,29 +87,25 @@ export default function CreateTaskDialog() {
                 required
               />
             </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label className="text-zinc-400">Priority</Label>
-            <Select name="priority" defaultValue="MEDIUM">
-              <SelectTrigger className="bg-zinc-900 border-zinc-800">
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
-                <SelectItem value="HIGH">High</SelectItem>
-                <SelectItem value="MEDIUM">Medium</SelectItem>
-                <SelectItem value="LOW">Low</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid gap-2">
+              <Label className="text-zinc-400">Priority</Label>
+              <Select name="priority" defaultValue="MEDIUM">
+                <SelectTrigger className="bg-zinc-900 border-zinc-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="LOW">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter className="mt-4">
-            <Button
-              type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700 w-full"
-            >
-              Create Task
-            </Button>
+            <SubmitButton className="bg-emerald-600 hover:bg-emerald-700 w-full">
+              Log to Today
+            </SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>
