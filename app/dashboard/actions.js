@@ -16,6 +16,40 @@ async function getUser() {
 }
 
 // -----------------------------------------------------------------------------
+// PAYMENT ACTIONS
+// -----------------------------------------------------------------------------
+
+export async function addProjectPayment(formData) {
+  const user = await getUser();
+  const projectId = formData.get("projectId");
+
+  await prisma.payment.create({
+    data: {
+      projectId: projectId,
+      amount: parseFloat(formData.get("amount")),
+      date: new Date(formData.get("date")),
+      notes: formData.get("notes"),
+    },
+  });
+
+  revalidatePath("/dashboard/projects");
+}
+
+export async function deletePayment(paymentId) {
+  const user = await getUser();
+  // Ensure the project belongs to user before deleting payment
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { project: true },
+  });
+
+  if (payment && payment.project.userId === user.id) {
+    await prisma.payment.delete({ where: { id: paymentId } });
+    revalidatePath("/dashboard/projects");
+  }
+}
+
+// -----------------------------------------------------------------------------
 // DAILY LOG ACTIONS
 // -----------------------------------------------------------------------------
 
@@ -76,7 +110,7 @@ export async function closeLog(logId) {
 }
 
 // -----------------------------------------------------------------------------
-// PROJECT ACTIONS
+// UPDATED PROJECT ACTIONS (With Currency)
 // -----------------------------------------------------------------------------
 
 export async function createProject(formData) {
@@ -88,14 +122,15 @@ export async function createProject(formData) {
       name: formData.get("name"),
       clientName: formData.get("clientName"),
       description: formData.get("description"),
+      type: formData.get("type"),
 
-      // NEW FIELDS
-      type: formData.get("type"), // 'EARNING' or 'SPENDING'
-      pricingType: formData.get("pricingType"), // 'HOURLY', 'FIXED', 'PER_TASK'
-      costPerTask: parseFloat(formData.get("costPerTask") || 0),
+      // NEW: Currency
+      currency: formData.get("currency"), // 'USD' or 'INR'
 
+      pricingType: formData.get("pricingType"),
       hourlyRate: parseFloat(formData.get("hourlyRate") || 0),
       fixedBudget: parseFloat(formData.get("fixedBudget") || 0),
+      costPerTask: parseFloat(formData.get("costPerTask") || 0),
       estimatedHours: parseInt(formData.get("estimatedHours") || 0),
       startDate: formData.get("startDate")
         ? new Date(formData.get("startDate"))
@@ -119,14 +154,15 @@ export async function updateProject(formData) {
       name: formData.get("name"),
       clientName: formData.get("clientName"),
       description: formData.get("description"),
-
-      // NEW FIELDS
       type: formData.get("type"),
-      pricingType: formData.get("pricingType"),
-      costPerTask: parseFloat(formData.get("costPerTask") || 0),
 
+      // Update Currency
+      currency: formData.get("currency"),
+
+      pricingType: formData.get("pricingType"),
       hourlyRate: parseFloat(formData.get("hourlyRate") || 0),
       fixedBudget: parseFloat(formData.get("fixedBudget") || 0),
+      costPerTask: parseFloat(formData.get("costPerTask") || 0),
       estimatedHours: parseInt(formData.get("estimatedHours") || 0),
       startDate: formData.get("startDate")
         ? new Date(formData.get("startDate"))

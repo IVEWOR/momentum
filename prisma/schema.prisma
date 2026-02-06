@@ -7,6 +7,12 @@ datasource db {
 }
 
 // --- ENUMS ---
+
+enum Currency {
+  USD
+  INR
+}
+
 enum TaskStatus {
   PENDING
   COMPLETED
@@ -28,6 +34,7 @@ enum PricingType {
   HOURLY
   FIXED
   PER_TASK
+  MONTHLY
 }
 
 // --- MODELS ---
@@ -57,6 +64,7 @@ model Project {
   endDate       DateTime?
   
   pricingType   PricingType @default(FIXED)
+  currency      Currency    @default(USD)
   hourlyRate    Float?       
   fixedBudget   Float?   
   costPerTask   Float?    
@@ -73,7 +81,24 @@ model Project {
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks         Task[]
 
+  payments      Payment[]
+
   @@index([userId])
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  projectId     String
+  
+  amount        Float
+  date          DateTime  @default(now()) // When received/paid
+  notes         String?   // e.g., "January Retainer" or "Milestone 1"
+  
+  createdAt     DateTime  @default(now())
+  
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 model DailyLog {

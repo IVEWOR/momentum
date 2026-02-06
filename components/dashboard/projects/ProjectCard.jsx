@@ -2,6 +2,7 @@
 
 import { toggleProjectStatus, deleteProject } from "@/app/dashboard/actions";
 import ProjectDialog from "./ProjectDialog";
+import PaymentManager from "./PaymentManager";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
   Briefcase,
   DollarSign,
   TrendingDown,
-  TrendingUp,
+  CalendarDays,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -21,61 +22,112 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import {
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  differenceInMonths,
+} from "date-fns";
 
 export default function ProjectCard({ project }) {
   const isCompleted = project.status === "COMPLETED";
   const isExpense = project.type === "SPENDING";
+  const isMonthly = project.pricingType === "MONTHLY";
+  const currencySymbol = project.currency === "INR" ? "₹" : "$";
 
-  // 1. Time Logic
-  const totalMinutesSpent = project.tasks.reduce(
+  // ---------------------------------------------------------------------------
+  // 1. TIME & PROGRESS LOGIC
+  // ---------------------------------------------------------------------------
+
+  let relevantTasks = project.tasks;
+  let timeLabel = "Total Time";
+
+  // If Monthly, filter tasks to ONLY show this month's work in the progress bar
+  if (isMonthly) {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+
+    relevantTasks = project.tasks.filter((t) =>
+      isWithinInterval(new Date(t.workDate), {
+        start: monthStart,
+        end: monthEnd,
+      }),
+    );
+    timeLabel = "This Month";
+  }
+
+  const minutesSpent = relevantTasks.reduce(
     (acc, t) => acc + (t.actualTime || 0),
     0,
   );
-  const hoursSpent = Math.round((totalMinutesSpent / 60) * 10) / 10;
-
-  // 2. Financial Logic
-  let financialLabel = "$0.00";
-  let subLabel = "Cost";
-
-  // Calculate total spent from TASKS (The real actuals)
-  const totalActualSpent = project.tasks.reduce(
-    (acc, t) => acc + (t.actualCost || 0),
-    0,
-  );
-
-  if (project.pricingType === "FIXED") {
-    if (isExpense) {
-      // Show Remaining Budget
-      const budget = project.fixedBudget || 0;
-      const remaining = budget - totalActualSpent;
-      financialLabel = `$${remaining.toFixed(2)}`;
-      subLabel = `Remaining of $${budget}`;
-    } else {
-      financialLabel = `$${project.fixedBudget?.toLocaleString()}`;
-      subLabel = "Fixed Revenue";
-    }
-  } else if (
-    project.pricingType === "PER_TASK" ||
-    project.pricingType === "HOURLY"
-  ) {
-    // For variable costs, just show total accumulated spend
-    financialLabel = `$${totalActualSpent.toFixed(2)}`;
-    subLabel = "Total Spent";
-  }
-
-  // 3. Progress Logic
+  const hoursSpent = Math.round((minutesSpent / 60) * 10) / 10;
   const estimatedHours = project.estimatedHours || 0;
+
+  // Progress Calculation
   const progressPercent =
     estimatedHours > 0 ? Math.min(100, (hoursSpent / estimatedHours) * 100) : 0;
 
-  // 4. Deadline Logic
+  // ---------------------------------------------------------------------------
+  // 2. FINANCIAL DISPLAY LOGIC
+  // ---------------------------------------------------------------------------
+
+  // Calculate Actual Paid from Manual Payment Ledger
+  const totalPaid = project.payments.reduce((acc, p) => acc + p.amount, 0);
+
+  let financialLabel = `${currencySymbol}0.00`;
+  let subLabel = "Recorded";
+
+  if (isMonthly) {
+    // Monthly: Show Rate prominently + Total LTV (Total Paid)
+    const monthlyRate = project.fixedBudget || 0;
+
+    // Calculate active duration for estimation
+    const startDate = project.startDate
+      ? new Date(project.startDate)
+      : new Date();
+    const monthsActive = Math.max(
+      1,
+      differenceInMonths(new Date(), startDate) + 1,
+    );
+
+    financialLabel = `${currencySymbol}${monthlyRate.toLocaleString()} / mo`;
+    subLabel = `LTV: ${currencySymbol}${totalPaid.toLocaleString()}`;
+  } else {
+    // Fixed/Hourly/PerTask: Show what has been PAID/RECORDED vs Target
+    financialLabel = `${currencySymbol}${totalPaid.toLocaleString()}`;
+
+    if (project.pricingType === "FIXED") {
+      const budget = project.fixedBudget || 0;
+      if (isExpense) {
+        // Expenses: Show remaining budget
+        const remaining = budget - totalPaid;
+        subLabel = `Remaining: ${currencySymbol}${remaining.toLocaleString()}`;
+      } else {
+        // Income: Show total value
+        subLabel = `of ${currencySymbol}${budget.toLocaleString()}`;
+      }
+    } else {
+      subLabel = "Total Recorded";
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. DEADLINE LOGIC
+  // ---------------------------------------------------------------------------
+
   let daysLeftLabel = "No Deadline";
   let deadlineColor = "text-zinc-500";
-  if (project.endDate) {
+
+  if (isMonthly) {
+    daysLeftLabel = "Recurring";
+    deadlineColor = "text-blue-400";
+  } else if (project.endDate) {
     const today = new Date();
     const diffDays = Math.ceil(
       (new Date(project.endDate) - today) / (1000 * 60 * 60 * 24),
     );
+
     if (diffDays < 0) {
       daysLeftLabel = `${Math.abs(diffDays)}d overdue`;
       deadlineColor = "text-red-500";
@@ -84,6 +136,10 @@ export default function ProjectCard({ project }) {
       deadlineColor = diffDays <= 3 ? "text-orange-500" : "text-emerald-500";
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // 4. RENDER
+  // ---------------------------------------------------------------------------
 
   return (
     <div
@@ -95,7 +151,7 @@ export default function ProjectCard({ project }) {
           : "border-l-2 border-l-emerald-500",
       )}
     >
-      {/* Header */}
+      {/* HEADER */}
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h3
@@ -107,13 +163,14 @@ export default function ProjectCard({ project }) {
             {project.name}
           </h3>
           <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-            {isExpense ? (
+            {isMonthly ? (
+              <CalendarDays className="w-3 h-3 text-blue-400" />
+            ) : isExpense ? (
               <TrendingDown className="w-3 h-3 text-red-400" />
             ) : (
               <Briefcase className="w-3 h-3" />
             )}
-            {project.clientName ||
-              (isExpense ? "Internal Expense" : "Client Work")}
+            {project.clientName || (isExpense ? "Internal Expense" : "Client")}
           </div>
         </div>
 
@@ -151,10 +208,12 @@ export default function ProjectCard({ project }) {
         </DropdownMenu>
       </div>
 
-      {/* Progress Section */}
+      {/* PROGRESS BAR */}
       <div className="mb-6 space-y-2">
         <div className="flex justify-between text-xs text-zinc-400">
-          <span>Progress ({Math.round(progressPercent)}%)</span>
+          <span>
+            {timeLabel} ({Math.round(progressPercent)}%)
+          </span>
           <span
             className={
               hoursSpent > estimatedHours ? "text-red-400" : "text-zinc-400"
@@ -172,26 +231,29 @@ export default function ProjectCard({ project }) {
         />
       </div>
 
-      {/* Details Grid */}
+      {/* DETAILS GRID */}
       <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+        {/* Financials */}
         <div className="space-y-1">
           <div className="text-xs text-zinc-500 flex items-center gap-1">
-            <DollarSign className="w-3 h-3" /> {isExpense ? "Spent" : "Revenue"}
+            <DollarSign className="w-3 h-3" />{" "}
+            {isExpense ? "Paid Out" : "Revenue"}
           </div>
           <div
             className={cn(
-              "font-mono font-medium",
+              "font-mono font-medium truncate",
               isExpense ? "text-red-300" : "text-emerald-300",
             )}
           >
             {financialLabel}
           </div>
-          <div className="text-[10px] text-zinc-600">{subLabel}</div>
+          <div className="text-[10px] text-zinc-600 truncate">{subLabel}</div>
         </div>
 
+        {/* Timeline */}
         <div className="space-y-1">
           <div className="text-xs text-zinc-500 flex items-center gap-1">
-            <Clock className="w-3 h-3" /> Time Left
+            <Clock className="w-3 h-3" /> Timeline
           </div>
           <div className={cn("font-mono font-medium", deadlineColor)}>
             {daysLeftLabel}
@@ -199,7 +261,7 @@ export default function ProjectCard({ project }) {
         </div>
       </div>
 
-      {/* Footer Actions */}
+      {/* FOOTER ACTIONS */}
       <div className="mt-auto flex items-center justify-between border-t border-zinc-800/50 pt-4">
         <Badge
           variant="secondary"
@@ -210,10 +272,27 @@ export default function ProjectCard({ project }) {
               : "bg-zinc-800 text-zinc-400",
           )}
         >
-          {isCompleted ? "COMPLETED" : "ACTIVE"}
+          {isMonthly ? "SUBSCRIPTION" : isCompleted ? "COMPLETED" : "ACTIVE"}
         </Badge>
+
         <div className="flex gap-2">
+          {/* Wallet Button for Payments */}
+          <PaymentManager project={project} />
+
+          {/* Edit Project Button */}
           <ProjectDialog project={project} />
+
+          {/* Quick Complete Button (Only for Active non-Monthly) */}
+          {!isCompleted && !isMonthly && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-emerald-500 hover:bg-emerald-500/10"
+              onClick={() => toggleProjectStatus(project.id, "COMPLETED")}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

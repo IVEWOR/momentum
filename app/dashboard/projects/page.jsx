@@ -14,8 +14,14 @@ export default async function ProjectsPage() {
     where: { userId: user.id },
     include: {
       tasks: {
-        select: { actualTime: true }, // Only need time to sum it up
+        select: {
+          actualTime: true,
+          actualCost: true,
+          workDate: true,
+          status: true,
+        },
       },
+      payments: true, // Fetch payments for the ledger
     },
     orderBy: { createdAt: "desc" },
   });

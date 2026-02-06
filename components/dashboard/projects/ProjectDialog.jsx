@@ -23,7 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SubmitButton } from "@/components/ui/submit-button"; // Import
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default function ProjectDialog({ project = null }) {
   const [open, setOpen] = useState(false);
@@ -32,8 +32,12 @@ export default function ProjectDialog({ project = null }) {
   );
   const [projectType, setProjectType] = useState(project?.type || "EARNING");
 
+  // New Cuirrency state
+  const [currency, setCurrency] = useState(project?.currency || "USD");
+
   const isEdit = !!project;
   const isExpense = projectType === "SPENDING";
+  const currencySymbol = currency === "INR" ? "₹" : "$";
 
   async function clientAction(formData) {
     if (isEdit) {
@@ -71,32 +75,47 @@ export default function ProjectDialog({ project = null }) {
         </DialogHeader>
 
         <form action={clientAction} className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-900 rounded-lg border border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setProjectType("EARNING")}
-              className={cn(
-                "flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all",
-                !isExpense
-                  ? "bg-emerald-600/20 text-emerald-400 border border-emerald-600/50"
-                  : "text-zinc-500 hover:text-zinc-300",
-              )}
+          {/* Top Row: Type & Currency */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Type Toggle */}
+            <div className="grid grid-cols-2 gap-1 p-1 bg-zinc-900 rounded-lg border border-zinc-800 h-10">
+              <button
+                type="button"
+                onClick={() => setProjectType("EARNING")}
+                className={cn(
+                  "text-xs font-medium rounded transition-all",
+                  !isExpense ? "bg-zinc-800 text-emerald-400" : "text-zinc-500",
+                )}
+              >
+                Income
+              </button>
+              <button
+                type="button"
+                onClick={() => setProjectType("SPENDING")}
+                className={cn(
+                  "text-xs font-medium rounded transition-all",
+                  isExpense ? "bg-zinc-800 text-red-400" : "text-zinc-500",
+                )}
+              >
+                Expense
+              </button>
+              <input type="hidden" name="type" value={projectType} />
+            </div>
+
+            {/* Currency Select */}
+            <Select
+              name="currency"
+              defaultValue={currency}
+              onValueChange={setCurrency}
             >
-              <TrendingUp className="w-4 h-4" /> Income Project
-            </button>
-            <button
-              type="button"
-              onClick={() => setProjectType("SPENDING")}
-              className={cn(
-                "flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all",
-                isExpense
-                  ? "bg-red-600/20 text-red-400 border border-red-600/50"
-                  : "text-zinc-500 hover:text-zinc-300",
-              )}
-            >
-              <TrendingDown className="w-4 h-4" /> Expense / Bidding
-            </button>
-            <input type="hidden" name="type" value={projectType} />
+              <SelectTrigger className="bg-zinc-900 border-zinc-800 h-10">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+                <SelectItem value="USD">USD ($)</SelectItem>
+                <SelectItem value="INR">INR (₹)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -131,23 +150,15 @@ export default function ProjectDialog({ project = null }) {
             />
           </div>
 
+          {/* Financials Section */}
           <div
             className={cn(
-              "p-4 rounded-lg border space-y-4 transition-colors",
+              "p-4 rounded-lg border space-y-4",
               isExpense
                 ? "bg-red-950/10 border-red-900/30"
                 : "bg-emerald-950/10 border-emerald-900/30",
             )}
           >
-            <h3
-              className={cn(
-                "text-sm font-medium",
-                isExpense ? "text-red-400" : "text-emerald-400",
-              )}
-            >
-              {isExpense ? "Cost Settings" : "Revenue Settings"}
-            </h3>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Pricing Model</Label>
@@ -162,20 +173,20 @@ export default function ProjectDialog({ project = null }) {
                   <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
                     <SelectItem value="FIXED">Fixed Budget</SelectItem>
                     <SelectItem value="HOURLY">Hourly Rate</SelectItem>
-                    <SelectItem value="PER_TASK">
-                      Cost Per Item / Bid
-                    </SelectItem>
+                    <SelectItem value="MONTHLY">Monthly Retainer</SelectItem>
+                    <SelectItem value="PER_TASK">Per Item</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
+                {/* Dynamic Labels based on Currency Symbol */}
                 {pricingType === "FIXED" && (
                   <>
                     <Label>
                       {isExpense
-                        ? "Total Allocated Budget ($)"
-                        : "Total Project Value ($)"}
+                        ? `Budget (${currencySymbol})`
+                        : `Value (${currencySymbol})`}
                     </Label>
                     <Input
                       name="fixedBudget"
@@ -189,7 +200,9 @@ export default function ProjectDialog({ project = null }) {
                 {pricingType === "HOURLY" && (
                   <>
                     <Label>
-                      {isExpense ? "Hourly Cost ($/hr)" : "Hourly Rate ($/hr)"}
+                      {isExpense
+                        ? `Hourly Cost (${currencySymbol})`
+                        : `Hourly Rate (${currencySymbol})`}
                     </Label>
                     <Input
                       name="hourlyRate"
@@ -200,12 +213,28 @@ export default function ProjectDialog({ project = null }) {
                     />
                   </>
                 )}
+                {pricingType === "MONTHLY" && (
+                  <>
+                    <Label>
+                      {isExpense
+                        ? `Monthly Cost (${currencySymbol})`
+                        : `Monthly Revenue (${currencySymbol})`}
+                    </Label>
+                    <Input
+                      name="fixedBudget"
+                      type="number"
+                      step="0.01"
+                      defaultValue={project?.fixedBudget}
+                      className="bg-zinc-900 border-zinc-800"
+                    />
+                  </>
+                )}
                 {pricingType === "PER_TASK" && (
                   <>
                     <Label>
                       {isExpense
-                        ? "Cost Per Bid/Item ($)"
-                        : "Rate Per Item ($)"}
+                        ? `Cost Per Bid/Item (${currencySymbol})`
+                        : `Rate Per Item ((${currencySymbol})`}
                     </Label>
                     <Input
                       name="costPerTask"
@@ -221,7 +250,11 @@ export default function ProjectDialog({ project = null }) {
             </div>
 
             <div className="space-y-2">
-              <Label>Estimated Hours (Total)</Label>
+              <Label>
+                {pricingType === "MONTHLY"
+                  ? "Hours Limit (Per Month)"
+                  : "Estimated Hours (Total)"}
+              </Label>
               <Input
                 name="estimatedHours"
                 type="number"
