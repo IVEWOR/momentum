@@ -122,4 +122,18 @@
   body {
     @apply bg-background text-foreground;
   }
+  button,
+  [type="button"],
+  [type="reset"],
+  [type="submit"],
+  [role="button"],
+  a {
+    cursor: pointer !important;
+  }
+
+  /* Optional: Make disabled buttons show 'not-allowed' */
+  button:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.7;
+  }
 }

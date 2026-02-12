@@ -20,7 +20,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-zinc-950 text-white">
-      <h1 className="text-4xl font-bold mb-6">DeepTrack Intelligence</h1>
+      <h1 className="text-4xl font-bold mb-6">MOMENTUM</h1>
       <p className="text-zinc-400 mb-8">
         Execution analytics for high performers.
       </p>
