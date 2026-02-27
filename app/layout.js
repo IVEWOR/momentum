@@ -5,7 +5,7 @@ import NextTopLoader from "nextjs-toploader";
 const gfonts = Google_Sans_Flex({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "DeepTrack",
+  title: "Momentum",
   description: "Execution Intelligence System",
 };
 
