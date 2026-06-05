@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 // --- ENUMS ---
@@ -40,124 +40,126 @@ enum PricingType {
 // --- MODELS ---
 
 model User {
-  id            String       @id @default(cuid())
-  name          String?
-  email         String       @unique
-  createdAt     DateTime     @default(now())
-  
-  tasks         Task[]
-  projects      Project[]
-  dailyStats    DailyStats[]
-  dailyLogs     DailyLog[]
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  tasks      Task[]
+  projects   Project[]
+  dailyStats DailyStats[]
+  dailyLogs  DailyLog[]
+
+  leads Lead[]
 }
 
 model Project {
-  id            String       @id @default(cuid())
-  userId        String
-  name          String
-  description   String?
-  clientName    String?
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  clientName  String?
 
-  type          ProjectType  @default(EARNING)
-  
-  startDate     DateTime?
-  endDate       DateTime?
-  
-  pricingType   PricingType @default(FIXED)
-  currency      Currency    @default(USD)
-  hourlyRate    Float?       
-  fixedBudget   Float?   
-  costPerTask   Float?    
-  estimatedHours Int?        
-  
-  notes         String?      @db.Text
-  clientFeedback String?     @db.Text
-  
-  status        String       @default("ACTIVE") 
+  type ProjectType @default(EARNING)
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  startDate DateTime?
+  endDate   DateTime?
 
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks         Task[]
+  pricingType    PricingType @default(FIXED)
+  currency       Currency    @default(USD)
+  hourlyRate     Float?
+  fixedBudget    Float?
+  costPerTask    Float?
+  estimatedHours Int?
 
-  payments      Payment[]
+  notes          String? @db.Text
+  clientFeedback String? @db.Text
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  payments Payment[]
 
   @@index([userId])
 }
 
 model Payment {
-  id            String    @id @default(cuid())
-  projectId     String
-  
-  amount        Float
-  date          DateTime  @default(now()) // When received/paid
-  notes         String?   // e.g., "January Retainer" or "Milestone 1"
-  
-  createdAt     DateTime  @default(now())
-  
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        String @id @default(cuid())
+  projectId String
+
+  amount Float
+  date   DateTime @default(now()) // When received/paid
+  notes  String? // e.g., "January Retainer" or "Milestone 1"
+
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
 }
 
 model DailyLog {
-  id            String    @id @default(cuid())
-  userId        String
-  
+  id     String @id @default(cuid())
+  userId String
+
   // NEW: Editable Title
-  title         String?   
+  title String?
 
-  date          DateTime  @default(now()) 
-  status        String    @default("OPEN") 
-  
+  date   DateTime @default(now())
+  status String   @default("OPEN")
+
   // Cached stats 
-  totalTasks    Int       @default(0)
-  completedTasks Int      @default(0)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  totalTasks     Int @default(0)
+  completedTasks Int @default(0)
 
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks         Task[]    
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
 
   @@index([userId])
 }
 
 model Task {
-  id            String    @id @default(cuid())
-  
-  dailyLogId    String?   
-  projectId     String?   
-  userId        String
-  
-  description   String
-  status        TaskStatus @default(PENDING) 
-  priority      Priority  @default(MEDIUM)
-  
-  category      String    @default("General") 
-  
-  estimatedTime Int       
-  actualTime    Int?      
-  
-  startTime     DateTime? 
-  endTime       DateTime? 
-  
-  isRunning     Boolean   @default(false)
-  elapsedSeconds Int      @default(0)
-  lastStartTime DateTime? 
+  id String @id @default(cuid())
 
-  actualCost    Float?    @default(0)
-  
-  notes         String?   @db.Text 
-  workDate      DateTime  @default(now()) 
+  dailyLogId String?
+  projectId  String?
+  userId     String
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  description String
+  status      TaskStatus @default(PENDING)
+  priority    Priority   @default(MEDIUM)
 
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  dailyLog      DailyLog? @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  category String @default("General")
+
+  estimatedTime Int
+  actualTime    Int?
+
+  startTime DateTime?
+  endTime   DateTime?
+
+  isRunning      Boolean   @default(false)
+  elapsedSeconds Int       @default(0)
+  lastStartTime  DateTime?
+
+  actualCost Float? @default(0)
+
+  notes    String?  @db.Text
+  workDate DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  dailyLog DailyLog? @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
 
   @@index([dailyLogId])
   @@index([userId])
@@ -171,8 +173,94 @@ model DailyStats {
   completedTasks  Int
   totalEstimated  Int
   totalActual     Int
-  efficiencyScore Float    
+  efficiencyScore Float
   aiSummary       String?  @db.Text
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, date])
+}
+
+enum LeadSource {
+  UPWORK
+  TOPTAL
+  LINKEDIN
+  EMAIL
+  REFERRAL
+  DIRECT
+  OTHER
+}
+
+enum LeadType {
+  INBOUND_BID // responding to a job post
+  OUTBOUND // cold outreach
+}
+
+enum LeadStatus {
+  SENT
+  VIEWED
+  REPLIED
+  INTERVIEW
+  NEGOTIATING
+  WON
+  LOST
+  NO_REPLY
+  DROPPED
+}
+
+model Lead {
+  id     String @id @default(cuid())
+  userId String
+
+  // Target
+  clientName  String?
+  companyName String?
+  jobTitle    String?
+  jobUrl      String?
+
+  // Classification
+  source LeadSource
+  type   LeadType   @default(INBOUND_BID)
+  status LeadStatus @default(SENT)
+
+  // Financials
+  currency  Currency @default(USD)
+  budgetMin Float?
+  budgetMax Float?
+
+  // Upwork-specific
+  connectsSpent Int?
+
+  // Content
+  proposalText String? @db.Text
+  notes        String? @db.Text
+
+  // Outcome — links to Project if WON
+  convertedProjectId String?
+
+  sentAt         DateTime  @default(now())
+  lastActivityAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities LeadActivity[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([source])
+}
+
+model LeadActivity {
+  id     String @id @default(cuid())
+  leadId String
+
+  // e.g. "FOLLOW_UP", "REPLY_RECEIVED", "CALL_SCHEDULED", "PROPOSAL_UPDATED"
+  type  String
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
 }
